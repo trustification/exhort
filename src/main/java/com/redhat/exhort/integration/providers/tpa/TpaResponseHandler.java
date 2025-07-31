@@ -82,10 +82,20 @@ public class TpaResponseHandler extends ProviderResponseHandler {
     return tree.getAll().stream()
         .map(PackageRef::ref)
         .filter(ref -> response.has(ref))
-        .collect(Collectors.toMap(ref -> ref, ref -> toIssues(ref, (ArrayNode) response.get(ref))));
+        .collect(Collectors.toMap(ref -> ref, ref -> toIssues(response.get(ref))));
   }
 
-  private List<Issue> toIssues(String ref, ArrayNode response) {
+  private List<Issue> toIssues(JsonNode response) {
+    // Once this is deployed, we can remove this check and assume
+    // the response contains details and warnings.
+    // https://github.com/trustification/trustify/issues/1887
+    if (response.has("details")) {
+      return toIssues((ArrayNode) response.get("details"));
+    }
+    return toIssues((ArrayNode) response);
+  }
+
+  private List<Issue> toIssues(ArrayNode response) {
     if (response.isEmpty()) {
       return Collections.emptyList();
     }
