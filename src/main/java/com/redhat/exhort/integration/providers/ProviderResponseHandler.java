@@ -26,6 +26,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
@@ -53,6 +54,7 @@ import com.redhat.exhort.integration.Constants;
 import com.redhat.exhort.model.CvssScoreComparable.DependencyScoreComparator;
 import com.redhat.exhort.model.CvssScoreComparable.TransitiveScoreComparator;
 import com.redhat.exhort.model.DependencyTree;
+import com.redhat.exhort.model.DirectDependency;
 import com.redhat.exhort.model.ProviderResponse;
 import com.redhat.exhort.model.trustedcontent.IndexedRecommendation;
 import com.redhat.exhort.model.trustedcontent.TrustedContentResponse;
@@ -427,9 +429,21 @@ public abstract class ProviderResponseHandler {
     var counter = new VulnerabilityCounter();
     var directRefs =
         tree.dependencies().keySet().stream().map(PackageRef::ref).collect(Collectors.toSet());
+    var transitiveRefs =
+        tree.dependencies().values().stream()
+            .map(DirectDependency::transitive)
+            .flatMap(Set::stream)
+            .map(PackageRef::ref)
+            .toList();
     issuesData
         .entrySet()
-        .forEach(e -> incrementCounter(e.getValue(), counter, directRefs.contains(e.getKey())));
+        .forEach(
+            e ->
+                incrementCounter(
+                    e.getValue(),
+                    counter,
+                    directRefs.contains(e.getKey()),
+                    transitiveRefs.contains(e.getKey())));
     Long recommendationsCount =
         sourceReport.stream().filter(s -> s.getRecommendation() != null).count();
     counter.recommendations.set(recommendationsCount.intValue());
@@ -438,7 +452,7 @@ public abstract class ProviderResponseHandler {
   }
 
   private void incrementCounter(
-      List<Issue> issues, VulnerabilityCounter counter, boolean isDirect) {
+      List<Issue> issues, VulnerabilityCounter counter, boolean isDirect, boolean isTransitive) {
     if (!issues.isEmpty()) {
       counter.dependencies.incrementAndGet();
     }
@@ -454,6 +468,9 @@ public abstract class ProviderResponseHandler {
           counter.total.addAndGet(vulnerabilities);
           if (isDirect) {
             counter.direct.addAndGet(vulnerabilities);
+          }
+          if (isTransitive) {
+            counter.transitive.addAndGet(vulnerabilities);
           }
           if (i.getRemediation() != null
               && i.getRemediation().getTrustedContent() != null
@@ -477,6 +494,7 @@ public abstract class ProviderResponseHandler {
 
   private static final record VulnerabilityCounter(
       AtomicInteger total,
+      AtomicInteger transitive,
       AtomicInteger critical,
       AtomicInteger high,
       AtomicInteger medium,
@@ -498,6 +516,7 @@ public abstract class ProviderResponseHandler {
           new AtomicInteger(),
           new AtomicInteger(),
           new AtomicInteger(),
+          new AtomicInteger(),
           new AtomicInteger());
     }
 
@@ -509,10 +528,9 @@ public abstract class ProviderResponseHandler {
           .medium(medium.get())
           .low(low.get())
           .direct(direct.get())
-          .transitive(total.get() - direct.get())
+          .transitive(transitive.get())
           .dependencies(dependencies.get())
           .remediations(remediations.get())
-          // Will be calculated later when TC recommendations will be added.
           .recommendations(recommendations.get())
           .unscanned(unscanned.get());
     }
