@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 Red Hat, Inc. and/or its affiliates
+ * Copyright 2025 Red Hat, Inc. and/or its affiliates
  * and other contributors as indicated by the @author tags.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,17 +16,13 @@
  * limitations under the License.
  */
 
-package com.redhat.exhort.integration.backend.sbom;
+package com.redhat.exhort.modelcards;
 
-import java.io.InputStream;
+import com.redhat.exhort.model.modelcards.TaskDefinition;
 
-import com.redhat.exhort.model.DependencyTree;
+import io.quarkus.hibernate.orm.panache.PanacheRepository;
 
-public abstract class SbomParser {
+import jakarta.enterprise.context.ApplicationScoped;
 
-  public DependencyTree parse(InputStream input) {
-    return buildTree(input);
-  }
-
-  protected abstract DependencyTree buildTree(InputStream input);
-}
+@ApplicationScoped
+public class TaskDefinitionRepository implements PanacheRepository<TaskDefinition> {}

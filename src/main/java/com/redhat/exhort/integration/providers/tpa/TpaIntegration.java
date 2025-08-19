@@ -154,10 +154,6 @@ public class TpaIntegration extends EndpointRouteBuilder {
               .atMost(Duration.ofSeconds(TPA_CLIENT_TIMEOUT))
               .getAccessToken();
     }
-    if (token == null) {
-      throw new IllegalStateException("No access token available.");
-    }
-    message.setHeader("Authorization", "Bearer " + token);
   }
 
   private void processHealthRequest(Exchange exchange) {
